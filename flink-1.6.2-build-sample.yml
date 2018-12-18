@@ -106,7 +106,7 @@ Resources:
             flink = urllib2.urlopen('https://github.com/apache/flink/archive/release-${FlinkVersion}.zip')
             s3.put_object(Bucket='${ArtifactBucket}',Key='sources/flink-src.zip',Body=flink.read())
 
-            runtime_artifacts = urllib2.urlopen('https://github.com/s-ifti/kinesis-analytics-sample-cars/archive/master.zip')
+            runtime_artifacts = urllib2.urlopen('https://github.com/s-ifti/test-flink/archive/master.zip')
             s3.put_object(Bucket='${ArtifactBucket}',Key='sources/kinesis-analytics-sample-cars.zip',Body=runtime_artifacts.read())
 
             cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
