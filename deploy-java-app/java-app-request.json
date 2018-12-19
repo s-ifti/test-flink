@@ -15,10 +15,10 @@
     },
     "FlinkApplicationConfiguration": {
       "CheckpointConfiguration": {
-        "CheckpointInterval": 120000,
-        "CheckpointingEnabled": false,
+        "CheckpointInterval": 10000,
+        "CheckpointingEnabled": true,
         "ConfigurationType": "CUSTOM",
-        "MinPauseBetweenCheckpoints": 60000
+        "MinPauseBetweenCheckpoints": 5000
       },
       "MonitoringConfiguration": {
         "ConfigurationType": "CUSTOM",

@@ -120,7 +120,7 @@ public class StreamingJob {
         LOG.info("Starting Kinesis Analytics Cars Sample using stream " + streamName + " region " + region + " metricTag " + metricTag);
 
         final ParameterTool params = ParameterTool.fromArgs(args);
-/*
+
         // Enable checkpointing
         env.enableCheckpointing(TimeUnit.MINUTES.toMillis(5L));
         StateBackend stateBackend = env.getStateBackend();
@@ -135,7 +135,7 @@ public class StreamingJob {
         env.getCheckpointConfig().setMaxConcurrentCheckpoints(1);
         // enable externalized checkpoints
         env.getCheckpointConfig().enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
-*/
+
 
         env.getConfig().setGlobalJobParameters(params);
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
@@ -193,11 +193,6 @@ public class StreamingJob {
                 ).returns(TypeInformation.of(new TypeHint<Tuple2<Boolean, Double>>() {
                 }))
                 .name("map_Speed");
-        //plot sample speed using cloudwatch metric sink
-        sampleSpeed
-                .map( v -> v.f1 )
-                .addSink(new CloudwatchMetricSink<Double>("MyCars-" + metricTag, "SampleSpeed") )
-                        .name("cloudwatch_SampleSpeed_Sink");
 
         DataStream<Double> avgProcessing = sampleSpeed
                 .timeWindowAll(org.apache.flink.streaming.api.windowing.time.Time.seconds(30))
