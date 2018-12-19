@@ -120,7 +120,7 @@ public class StreamingJob {
         LOG.info("Starting Kinesis Analytics Cars Sample using stream " + streamName + " region " + region + " metricTag " + metricTag);
 
         final ParameterTool params = ParameterTool.fromArgs(args);
-
+/*
         // Enable checkpointing
         env.enableCheckpointing(TimeUnit.MINUTES.toMillis(5L));
         StateBackend stateBackend = env.getStateBackend();
@@ -135,7 +135,7 @@ public class StreamingJob {
         env.getCheckpointConfig().setMaxConcurrentCheckpoints(1);
         // enable externalized checkpoints
         env.getCheckpointConfig().enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
-
+*/
 
         env.getConfig().setGlobalJobParameters(params);
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
