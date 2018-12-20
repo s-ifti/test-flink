@@ -81,43 +81,37 @@ import java.util.concurrent.TimeUnit;
 public class StreamingJob {
 
     private static Logger LOG = LoggerFactory.getLogger(StreamingJob.class);
+    private static String DEFAULT_REGION = "us-east-1";
+    private static int DEFAULT_PARALLELISM = 4;
 
+    private static Properties appProperties = null;
 
     public static void main(String[] args) throws Exception {
         // set up the streaming execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         LOG.info("Starting Kinesis Analytics Cars Sample - Calc Average Speed App Version 1.0.1");
 
-        Properties appProperties = getRuntimeConfigProperties();
+        appProperties = getRuntimeConfigProperties();
 
-        // see if metricTag property was passed, if present use it as a 
-        // cloudwatch metric prefix used in cloudwatch metric sink
-        // for this app
-        String metricTag = "None";
-        if (appProperties != null) {
-            metricTag = appProperties.getProperty("metricTag");
-            metricTag = StringUtils.isBlank(metricTag)? "None" : metricTag;
-        }
         // use a specific input stream name
-        String streamName = "";
-        if (appProperties != null) {
-            streamName = appProperties.getProperty("inputStreamName");
-        }
+        String streamName = getAppProperty("inputStreamName", "");
 
         if(StringUtils.isBlank(streamName)) {
             LOG.error("inputStreamName should be pass using CarProperties config within create-application API call");
             throw new Exception("inputStreamName should be pass using CarProperties config within create-application API call, aborting ..." );
         }
 
-
         // use a specific input stream name
-        String region = "us-east-1";
-        if (appProperties != null) {
-            region = appProperties.getProperty("region");
-            region = StringUtils.isBlank(region)? "us-east-1" : region;
-        }
+        String region = getAppProperty("region", DEFAULT_REGION);
 
-        LOG.info("Starting Kinesis Analytics Cars Sample using stream " + streamName + " region " + region + " metricTag " + metricTag);
+        int parallelism = getAppPropertyInt( "parallelism", DEFAULT_PARALLELISM);
+
+        String metricTag = getAppProperty("metricTag", "None");
+
+
+        LOG.info("Starting Kinesis Analytics Cars Sample using parallelism {} " +
+                " stream {} region {} metricTag {} ",
+                parallelism, streamName, region, metricTag);
 
         final ParameterTool params = ParameterTool.fromArgs(args);
 
@@ -140,9 +134,7 @@ public class StreamingJob {
         env.getConfig().setGlobalJobParameters(params);
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
-        // important, ensure you run flink app using 4 parallelism
-        // you can use parallelism per kpu as 2 to only use 2 task manager hosts
-        env.setParallelism(4);
+        env.setParallelism(parallelism);
 
         // Add kinesis as source
         Properties consumerConfig = new Properties();
@@ -217,6 +209,27 @@ public class StreamingJob {
 
 
         env.execute();
+    }
+
+
+    private static String getAppProperty(String name, final String defaultValue) {
+        String value = defaultValue;
+        if (appProperties != null) {
+            value = appProperties.getProperty(name);
+            value = StringUtils.isBlank(value)? defaultValue : value;
+        }
+        return value;
+    }
+
+    private static int getAppPropertyInt(String name, final int defaultIntValue) {
+        String value = getAppProperty(name, "" + defaultIntValue);
+        try {
+            return Integer.parseInt(value);
+        }
+        catch(NumberFormatException e) {
+            LOG.error("invalid string value {} given for property {} using default value ", value, name);
+            return defaultIntValue;
+        }
     }
 
     // helper method to return runtime properties for Property Group CarProperties
