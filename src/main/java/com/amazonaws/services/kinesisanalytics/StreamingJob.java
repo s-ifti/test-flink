@@ -81,6 +81,8 @@ import java.util.concurrent.TimeUnit;
 public class StreamingJob {
 
     private static Logger LOG = LoggerFactory.getLogger(StreamingJob.class);
+
+    private static String VERSION = "1.0.2";
     private static String DEFAULT_REGION = "us-east-1";
     private static int DEFAULT_PARALLELISM = 4;
 
@@ -89,7 +91,7 @@ public class StreamingJob {
     public static void main(String[] args) throws Exception {
         // set up the streaming execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        LOG.info("Starting Kinesis Analytics Cars Sample - Calc Average Speed App Version 1.0.1");
+        LOG.info("Starting Kinesis Analytics Cars Sample - Calc Average Speed App Version " + VERSION);
 
         appProperties = getRuntimeConfigProperties();
 
@@ -186,25 +188,27 @@ public class StreamingJob {
                 }))
                 .name("map_Speed");
 
-        DataStream<Double> avgProcessing = sampleSpeed
+        DataStream<Stats> avgProcessing = sampleSpeed
                 .timeWindowAll(org.apache.flink.streaming.api.windowing.time.Time.seconds(30))
-                //calc average speed for last 30 seconds window
-                //Note: right now even though we are grouping by moonroof true/false, the aggregate is
-                //created for all events
-                //a better aggregate would be to report on average speed of with moonroof vs without
-                //that will require using keyBy and timeWindow compared to using timeWindowAll
-                .aggregate(new AverageAggregate(), new MyProcessWindowFunction())
+                //calc statsfor last 30 seconds window
+                .aggregate(new StatsAggregate(), new MyProcessWindowFunction())
                 .name("avg_30Sec_Speed")
-                .map(avg -> {
-                    LOG.info("avg Speed: " + avg);
-                    return avg;
+                .map(stats -> {
+                    LOG.info("avg Speed: " + stats.getAvg());
+                    return stats;
                 })
                 .name("map_logSpeed");
 
                 avgProcessing
+                        .map(stats -> stats.getAvg())
                         .addSink(new CloudwatchMetricSink<Double>("MyCars-" + metricTag, "AvgSpeed") )
                         .name("cloudwatch_AvgSpeed_Sink");
+                avgProcessing
+                        .map(stats -> stats.getCount())
+                        .addSink(new CloudwatchMetricSink<Double>("MyCars-" + metricTag, "SampleCount") )
+                        .name("cloudwatch_SampleCounts_Sink");
                 avgProcessing.print()
+
                 .name("stdout");
 
 
@@ -247,40 +251,49 @@ public class StreamingJob {
     // Helper Function definitions for time window processing
 
     /**
-     * The accumulator is used to keep a running sum and a count. The {@code getResult} method
-     * computes the average.
+     * The Stats accumulator is used to keep a running sum and a count.
      */
-    private static class AverageAggregate
-            implements AggregateFunction<Tuple2<Boolean, Double>, Tuple2<Double, Double>, Double> {
+    private static class StatsAggregate
+            implements AggregateFunction<Tuple2<Boolean, Double>, Stats, Stats> {
         @Override
-        public Tuple2<Double, Double> createAccumulator() {
-            return new Tuple2<>(0.0, 0.0);
+        public Stats createAccumulator() {
+            return new Stats(0.0, 0.0, 0.0, 0.0);
         }
 
         @Override
-        public Tuple2<Double, Double> add(Tuple2<Boolean, Double> value, Tuple2<Double, Double> accumulator) {
-            return new Tuple2<>(accumulator.f0 + value.f1, accumulator.f1 + 1L);
+        public Stats add(Tuple2<Boolean, Double> value, Stats accumulator) {
+            return new Stats(
+                    Math.min(accumulator.getMin(), value.f1) ,
+                    Math.max(accumulator.getMax(), value.f1),
+                    accumulator.getCount() + 1L,
+                    accumulator.getSum() + value.f1
+            );
         }
 
         @Override
-        public Double getResult(Tuple2<Double, Double> accumulator) {
-            return ((double) accumulator.f0) / accumulator.f1;
+        public Stats getResult(Stats accumulator) {
+            return accumulator;
         }
 
         @Override
-        public Tuple2<Double, Double> merge(Tuple2<Double, Double> a, Tuple2<Double, Double> b) {
-            return new Tuple2<>(a.f0 + b.f0, a.f1 + b.f1);
+        public Stats merge(Stats a, Stats b) {
+            return new Stats(
+                    Math.min(a.getMin(), b.getMin()) ,
+                    Math.max(a.getMax(), b.getMax()),
+                    a.getCount() + b.getCount(),
+                    a.getSum() + b.getSum()
+            );
         }
     }
 
     private static class MyProcessWindowFunction
-            extends ProcessAllWindowFunction<Double, Double, TimeWindow> {
+            extends ProcessAllWindowFunction<Stats, Stats, TimeWindow> {
 
         public void process(
                 Context context,
-                Iterable<Double> averages,
-                Collector<Double> out) {
-            Double average = averages.iterator().next();
+                Iterable<Stats> averages,
+                Collector<Stats> out) {
+            Stats average = averages.iterator().next();
             out.collect(average);
         }
     }
