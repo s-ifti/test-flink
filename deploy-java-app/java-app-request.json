@@ -40,7 +40,7 @@
             "inputStreamName": "#{INPUT_STREAM}",
             "metricTag": "#{APP_NAME}",
             "region" : "#{TEST_REGION}",
-            "parallelism" : "64"
+            "parallelism" : "#{PARALLELISM}"
           }
         }
       ]
