@@ -13,9 +13,9 @@ Parameters:
     Type: String
     Default: test-flink
   Parallelism:
-    Description: Parallelism to use within flink job
+    Description: Parallelism to use within flink job (Max is 8)
     Type: String
-    Default: 64
+    Default: 8
 Outputs:
   ArtifactBucket:
     Description: Bucket containing the compiled artifacts
@@ -57,7 +57,7 @@ Resources:
               Configuration:
                 S3Bucket: !Ref ArtifactBucket
                 S3ObjectKey: sources/kinesis-analytics-sample-cars.zip
-              RunOrder: 1
+              RunOrder: 2
         - Name: Build
           Actions:
             - Name: BuildKinesisConnector
@@ -72,7 +72,7 @@ Resources:
                 Provider: CodeBuild
               Configuration:
                 ProjectName: !Ref KinesisConnectorBuildProject
-              RunOrder: 2
+              RunOrder: 1
             - Name: BuildKinesisAnalyticsSample
               InputArtifacts:
                 - Name: SampleArtifactsSource
