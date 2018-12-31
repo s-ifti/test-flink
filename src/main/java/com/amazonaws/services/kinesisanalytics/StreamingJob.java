@@ -174,7 +174,10 @@ public class StreamingJob {
 
                 }).
                 returns(Car.class)
-                .name("map_Car")
+                .name("map_Car2")
+                .map ( c -> { return c;} )
+                .returns(Car.class)
+                .name("map_Car3")
                 //assign timestamp for time window processing
                 .assignTimestampsAndWatermarks(new TimeLagWatermarkGenerator())
                 .name("timestamp")
